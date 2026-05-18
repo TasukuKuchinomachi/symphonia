@@ -1,0 +1,101 @@
+// symphonia data model
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id              String   @id @default(cuid())
+  name            String
+  githubRepo      String
+  localPath       String
+  defaultBranch   String   @default("main")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tasks           Task[]
+}
+
+// TaskStatus: BACKLOG | PLANNING | AWAITING_APPROVAL | IN_PROGRESS | REVIEW | DONE | FAILED
+model Task {
+  id              String     @id @default(cuid())
+  projectId       String
+  project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title           String
+  description     String
+  status          String     @default("BACKLOG")
+  branchName      String?
+  prUrl           String?
+  retryCount      Int        @default(0)
+  maxRetries      Int        @default(5)
+  reviewNotes     String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  grains          Grain[]
+  runs            AgentRun[]
+}
+
+// GrainStatus: PENDING | READY | RUNNING | VERIFYING | MERGED | FAILED | SKIPPED
+model Grain {
+  id               String      @id @default(cuid())
+  taskId           String
+  task             Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  ordinal          Int
+  title            String
+  instruction      String
+  filesHint        String      @default("[]") // JSON array
+  status           String      @default("PENDING")
+  worktreePath     String?
+  branchName       String?
+  commitSha        String?
+  attempts         Int         @default(0)
+  lastError        String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  dependsOn        GrainDep[]  @relation("dependent")
+  dependents       GrainDep[]  @relation("requirement")
+  runs             AgentRun[]
+}
+
+model GrainDep {
+  id              String @id @default(cuid())
+  grainId         String
+  dependsOnId     String
+  grain           Grain  @relation("dependent", fields: [grainId], references: [id], onDelete: Cascade)
+  dependsOn       Grain  @relation("requirement", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([grainId, dependsOnId])
+}
+
+// AgentKind: PLAN | IMPLEMENT | REVIEW
+// RunStatus: RUNNING | SUCCESS | FAILED | CANCELLED
+model AgentRun {
+  id          String        @id @default(cuid())
+  taskId      String?
+  task        Task?         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  grainId     String?
+  grain       Grain?        @relation(fields: [grainId], references: [id], onDelete: Cascade)
+  kind        String
+  status      String        @default("RUNNING")
+  startedAt   DateTime      @default(now())
+  finishedAt  DateTime?
+  exitCode    Int?
+  summary     String?
+  logs        LogEvent[]
+}
+
+model LogEvent {
+  id         String   @id @default(cuid())
+  runId      String
+  run        AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  ts         DateTime @default(now())
+  channel    String
+  payload    String
+
+  @@index([runId, ts])
+}

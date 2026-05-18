@@ -1,0 +1,17 @@
+node_modules
+.next
+out
+.DS_Store
+*.log
+
+# env
+.env
+.env.local
+
+# prisma
+prisma/dev.db
+prisma/dev.db-journal
+
+# symphonia runtime
+.symphonia/
+workspaces/
