@@ -9,9 +9,10 @@ out
 .env
 .env.local
 
-# prisma
-prisma/dev.db
-prisma/dev.db-journal
+# prisma / sqlite — never track runtime data
+*.db
+*.db-journal
+prisma/prisma/
 
 # symphonia runtime
 .symphonia/
